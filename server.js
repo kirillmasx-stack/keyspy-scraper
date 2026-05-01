@@ -56,6 +56,11 @@ app.post('/api/scrape/google', async (req, res) => {
   const ua = randomUA();
 
   console.log(`Scraping Google: "${query}" geo=${geo.country} pages=${pages}`);
+  console.log(`Proxy: ${OXYLABS_USER ? 'configured user='+OXYLABS_USER.slice(0,5)+'...' : 'NOT SET'}`);
+  if (OXYLABS_USER) {
+    const testUser = `customer-${OXYLABS_USER}-cc-${geo.country.toLowerCase()}-sessid-${Date.now()}`;
+    console.log(`Proxy username format: ${testUser.slice(0,40)}...`);
+  }
 
   const proxyConfig = OXYLABS_USER ? {
     server: `http://${PROXY_HOST}:${PROXY_PORT}`,
