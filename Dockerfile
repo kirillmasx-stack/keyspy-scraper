@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.42.1-jammy
+FROM mcr.microsoft.com/playwright:v1.59.1-jammy
 
 WORKDIR /app
 
@@ -7,6 +7,6 @@ RUN npm install
 
 COPY server.js ./server.js
 
-EXPOSE 8081
+EXPOSE 8080
 
 CMD ["node", "server.js"]
