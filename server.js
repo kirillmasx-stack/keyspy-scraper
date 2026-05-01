@@ -74,9 +74,9 @@ app.post('/api/scrape/google', async (req, res) => {
       viewport: { width: 1366, height: 768 },
       ignoreHTTPSErrors: true,
       proxy: {
-        server: `http://${BRIGHT_HOST}:${BRIGHT_PORT}`,
+        server: `http://${IPROYAL_HOST}:${IPROYAL_PORT}`,
         username: proxyUser,
-        password: BRIGHT_PASS,
+        password: IPROYAL_PASS,
       },
       extraHTTPHeaders: {
         'Accept-Language': `${geo.hl},en;q=0.9`,
