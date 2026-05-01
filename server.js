@@ -5,11 +5,11 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
 
-// Bright Data residential proxy
-const BRIGHT_USER = process.env.BRIGHT_USER;
-const BRIGHT_PASS = process.env.BRIGHT_PASS;
-const BRIGHT_HOST = process.env.BRIGHT_HOST || 'brd.superproxy.io';
-const BRIGHT_PORT = parseInt(process.env.BRIGHT_PORT || '22225');
+// IPRoyal residential proxy
+const IPROYAL_USER = process.env.IPROYAL_USER;
+const IPROYAL_PASS = process.env.IPROYAL_PASS;
+const IPROYAL_HOST = process.env.IPROYAL_HOST || 'geo.iproyal.com';
+const IPROYAL_PORT = parseInt(process.env.IPROYAL_PORT || '12321');
 
 const GEO_MAP = {
   2826: { country: 'GB', domain: 'google.co.uk', hl: 'en', gl: 'gb' },
@@ -41,15 +41,15 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 app.post('/api/scrape/google', async (req, res) => {
   const { query, location_code = 2826, pages = 1, mode = 'keyword' } = req.body;
   if (!query) return res.status(400).json({ error: 'query is required' });
-  if (!BRIGHT_USER) return res.status(503).json({ error: 'BRIGHT_USER not configured' });
+  if (!IPROYAL_USER) return res.status(503).json({ error: 'IPROYAL_USER not configured' });
 
   const geo = GEO_MAP[location_code] || GEO_MAP[2826];
   const actualPages = Math.min(parseInt(pages) || 1, 5);
   const ua = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
   const sessionId = Math.random().toString(36).slice(2, 10);
 
-  // Bright Data proxy username format
-  const proxyUser = `${BRIGHT_USER}-country-${geo.country.toLowerCase()}-session-${sessionId}`;
+  // IPRoyal proxy username format: user_country_XX_session_ID
+  const proxyUser = `${IPROYAL_USER}_country_${geo.country}_session_${sessionId}`;
   console.log(`Scraping: "${query}" geo=${geo.country} pages=${actualPages}`);
   console.log(`Proxy: ${proxyUser.slice(0, 40)}...`);
 
@@ -199,7 +199,7 @@ app.post('/api/scrape/google', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => res.json({ status: 'ok', service: 'KeySpy Scraper (Bright Data)' }));
+app.get('/', (req, res) => res.json({ status: 'ok', service: 'KeySpy Scraper (IPRoyal)' }));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => console.log(`KeySpy Scraper running on port ${PORT}`));
