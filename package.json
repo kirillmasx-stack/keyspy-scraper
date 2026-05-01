@@ -1,16 +1,11 @@
 {
   "name": "keyspy-scraper",
   "version": "1.0.0",
-  "description": "KeySpy Playwright Ad Scraper",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
   "dependencies": {
     "express": "^4.18.2",
     "playwright": "^1.59.1"
   },
-  "engines": {
-    "node": ">=18"
-  }
+  "engines": { "node": ">=18" }
 }
