@@ -64,12 +64,15 @@ app.post('/api/scrape/google', async (req, res) => {
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-blink-features=AutomationControlled',
+        '--ignore-certificate-errors',
+        '--ignore-ssl-errors',
       ],
     });
 
     const context = await browser.newContext({
       userAgent: ua,
       viewport: { width: 1366, height: 768 },
+      ignoreHTTPSErrors: true,
       proxy: {
         server: `http://${BRIGHT_HOST}:${BRIGHT_PORT}`,
         username: proxyUser,
