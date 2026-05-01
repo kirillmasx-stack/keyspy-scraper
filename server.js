@@ -59,7 +59,7 @@ app.post('/api/scrape/google', async (req, res) => {
 
   const proxyConfig = OXYLABS_USER ? {
     server: `http://${PROXY_HOST}:${PROXY_PORT}`,
-    username: `${OXYLABS_USER}-cc-${geo.country}`,
+    username: `customer-${OXYLABS_USER}-cc-${geo.country.toLowerCase()}-sessid-${Date.now()}`,
     password: OXYLABS_PASS,
   } : undefined;
 
@@ -110,7 +110,13 @@ app.post('/api/scrape/google', async (req, res) => {
       }
 
       console.log(`Loading: ${url}`);
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      try {
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      } catch(e) {
+        console.log('Retry after timeout...');
+        await sleep(3000);
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      }
 
       // Random delay to simulate human behavior
       await sleep(1500 + Math.random() * 2000);
