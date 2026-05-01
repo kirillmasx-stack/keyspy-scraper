@@ -211,6 +211,7 @@ app.post('/api/scrape/google', async (req, res) => {
 });
 
 // ── HEALTH CHECK ──────────────────────────────────────────────────────────────
+app.get('/', (req, res) => res.json({ status: 'ok', service: 'KeySpy Scraper' }));
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'KeySpy Scraper' }));
 
 app.listen(PORT, () => console.log(`KeySpy Scraper running on port ${PORT}`));
