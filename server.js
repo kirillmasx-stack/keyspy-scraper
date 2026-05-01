@@ -106,6 +106,29 @@ app.post('/api/scrape/google', async (req, res) => {
         await sleep(2000);
       }
 
+      // Debug: save HTML snippet to check structure
+      const pageTitle = await page.title();
+      const pageUrl = await page.url();
+      console.log(`Page ${p + 1} title: ${pageTitle} url: ${pageUrl}`);
+      
+      // Check if Google returned results or blocked
+      const bodyText = await page.evaluate(() => document.body?.innerText?.slice(0, 200));
+      console.log(`Page ${p + 1} body preview: ${bodyText?.replace(/\n/g, ' ')}`);
+
+      // Check what ad-related elements exist
+      const adElements = await page.evaluate(() => {
+        const checks = {
+          'data-text-ad': document.querySelectorAll('[data-text-ad]').length,
+          'uEierd': document.querySelectorAll('.uEierd').length,
+          '#tads': document.querySelectorAll('#tads').length,
+          '#bottomads': document.querySelectorAll('#bottomads').length,
+          'role=heading': document.querySelectorAll('[role="heading"]').length,
+          'aria-label-ad': document.querySelectorAll('[aria-label*="Ad"]').length,
+        };
+        return checks;
+      });
+      console.log(`Page ${p + 1} elements:`, JSON.stringify(adElements));
+
       const ads = await page.evaluate(() => {
         const results = [];
 
