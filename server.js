@@ -3,70 +3,55 @@ const { chromium } = require('playwright');
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 8080;
 
-// Oxylabs residential proxy config
-const OXYLABS_USER = process.env.OXYLABS_USER;
-const OXYLABS_PASS = process.env.OXYLABS_PASS;
-const PROXY_HOST = 'pr.oxylabs.io';
-const PROXY_PORT = 7777;
+// Bright Data residential proxy
+const BRIGHT_USER = process.env.BRIGHT_USER;
+const BRIGHT_PASS = process.env.BRIGHT_PASS;
+const BRIGHT_HOST = process.env.BRIGHT_HOST || 'brd.superproxy.io';
+const BRIGHT_PORT = parseInt(process.env.BRIGHT_PORT || '22225');
 
-// GEO to Google domain mapping
-const GEO_CONFIG = {
-  2826: { domain: 'google.co.uk', hl: 'en', gl: 'gb', country: 'GB' },
-  2840: { domain: 'google.com',    hl: 'en', gl: 'us', country: 'US' },
-  2124: { domain: 'google.ca',     hl: 'en', gl: 'ca', country: 'CA' },
-  2036: { domain: 'google.com.au', hl: 'en', gl: 'au', country: 'AU' },
-  2276: { domain: 'google.de',     hl: 'de', gl: 'de', country: 'DE' },
-  2616: { domain: 'google.pl',     hl: 'pl', gl: 'pl', country: 'PL' },
-  2356: { domain: 'google.co.in',  hl: 'en', gl: 'in', country: 'IN' },
-  2076: { domain: 'google.com.br', hl: 'pt', gl: 'br', country: 'BR' },
-  2484: { domain: 'google.com.mx', hl: 'es', gl: 'mx', country: 'MX' },
-  2784: { domain: 'google.ae',     hl: 'en', gl: 'ae', country: 'AE' },
-  2566: { domain: 'google.com.ng', hl: 'en', gl: 'ng', country: 'NG' },
-  2710: { domain: 'google.co.za',  hl: 'en', gl: 'za', country: 'ZA' },
+const GEO_MAP = {
+  2826: { country: 'GB', domain: 'google.co.uk', hl: 'en', gl: 'gb' },
+  2840: { country: 'US', domain: 'google.com',    hl: 'en', gl: 'us' },
+  2124: { country: 'CA', domain: 'google.ca',     hl: 'en', gl: 'ca' },
+  2036: { country: 'AU', domain: 'google.com.au', hl: 'en', gl: 'au' },
+  2276: { country: 'DE', domain: 'google.de',     hl: 'de', gl: 'de' },
+  2616: { country: 'PL', domain: 'google.pl',     hl: 'pl', gl: 'pl' },
+  2356: { country: 'IN', domain: 'google.co.in',  hl: 'en', gl: 'in' },
+  2076: { country: 'BR', domain: 'google.com.br', hl: 'pt', gl: 'br' },
+  2484: { country: 'MX', domain: 'google.com.mx', hl: 'es', gl: 'mx' },
+  2784: { country: 'AE', domain: 'google.ae',     hl: 'en', gl: 'ae' },
+  2724: { country: 'ES', domain: 'google.es',     hl: 'es', gl: 'es' },
+  2380: { country: 'IT', domain: 'google.it',     hl: 'it', gl: 'it' },
+  2250: { country: 'FR', domain: 'google.fr',     hl: 'fr', gl: 'fr' },
+  2528: { country: 'NL', domain: 'google.nl',     hl: 'nl', gl: 'nl' },
+  2804: { country: 'UA', domain: 'google.com.ua', hl: 'uk', gl: 'ua' },
+  2566: { country: 'NG', domain: 'google.com.ng', hl: 'en', gl: 'ng' },
 };
 
-// Random user agents
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
 ];
 
-function randomUA() {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
-// ── GOOGLE ADS SCRAPER ────────────────────────────────────────────────────────
 app.post('/api/scrape/google', async (req, res) => {
-  const {
-    query, location_code = 2826, mode = 'keyword', pages = 1
-  } = req.body;
-
+  const { query, location_code = 2826, pages = 1, mode = 'keyword' } = req.body;
   if (!query) return res.status(400).json({ error: 'query is required' });
+  if (!BRIGHT_USER) return res.status(503).json({ error: 'BRIGHT_USER not configured' });
 
-  const geo = GEO_CONFIG[location_code] || GEO_CONFIG[2826];
-  const ua = randomUA();
+  const geo = GEO_MAP[location_code] || GEO_MAP[2826];
+  const actualPages = Math.min(parseInt(pages) || 1, 5);
+  const ua = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+  const sessionId = Math.random().toString(36).slice(2, 10);
 
-  console.log(`Scraping Google: "${query}" geo=${geo.country} pages=${pages}`);
-  console.log(`Proxy: ${OXYLABS_USER ? 'configured user='+OXYLABS_USER.slice(0,5)+'...' : 'NOT SET'}`);
-  if (OXYLABS_USER) {
-    const testUser = `customer-${OXYLABS_USER}-cc-${geo.country.toLowerCase()}-sessid-${Date.now()}`;
-    console.log(`Proxy username format: ${testUser.slice(0,40)}...`);
-  }
-
-  const proxyConfig = OXYLABS_USER ? {
-    server: `http://${PROXY_HOST}:${PROXY_PORT}`,
-    username: `customer-${OXYLABS_USER}-cc-${geo.country.toLowerCase()}-sessid-${Date.now()}`,
-    password: OXYLABS_PASS,
-  } : undefined;
+  // Bright Data proxy username format
+  const proxyUser = `${BRIGHT_USER}-country-${geo.country.toLowerCase()}-session-${sessionId}`;
+  console.log(`Scraping: "${query}" geo=${geo.country} pages=${actualPages}`);
+  console.log(`Proxy: ${proxyUser.slice(0, 40)}...`);
 
   let browser;
   const allAds = [];
@@ -78,135 +63,102 @@ app.post('/api/scrape/google', async (req, res) => {
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
         '--disable-blink-features=AutomationControlled',
       ],
     });
 
     const context = await browser.newContext({
       userAgent: ua,
-      viewport: { width: 1366 + Math.floor(Math.random()*200), height: 768 + Math.floor(Math.random()*100) },
-      locale: geo.hl === 'en' ? 'en-US' : geo.hl,
-      timezoneId: 'Europe/London',
-      ...(proxyConfig ? { proxy: proxyConfig } : {}),
+      viewport: { width: 1366, height: 768 },
+      proxy: {
+        server: `http://${BRIGHT_HOST}:${BRIGHT_PORT}`,
+        username: proxyUser,
+        password: BRIGHT_PASS,
+      },
       extraHTTPHeaders: {
-        'Accept-Language': `${geo.hl}-${geo.country},${geo.hl};q=0.9,en;q=0.8`,
+        'Accept-Language': `${geo.hl},en;q=0.9`,
       },
     });
 
-    // Anti-detection
     await context.addInitScript(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4,5] });
       window.chrome = { runtime: {} };
     });
 
     const page = await context.newPage();
 
-    for (let pageNum = 0; pageNum < pages; pageNum++) {
-      const start = pageNum * 10;
-      let url;
+    for (let p = 0; p < actualPages; p++) {
+      const searchQuery = mode === 'domain' ? `site:${query}` : query;
+      const url = `https://www.${geo.domain}/search?q=${encodeURIComponent(searchQuery)}&hl=${geo.hl}&gl=${geo.gl}&start=${p * 10}&num=10`;
 
-      if (mode === 'domain') {
-        url = `https://www.${geo.domain}/search?q=site:${encodeURIComponent(query)}&hl=${geo.hl}&gl=${geo.gl}&start=${start}`;
-      } else {
-        url = `https://www.${geo.domain}/search?q=${encodeURIComponent(query)}&hl=${geo.hl}&gl=${geo.gl}&start=${start}`;
-      }
+      console.log(`Page ${p + 1}: ${url}`);
 
-      console.log(`Loading: ${url}`);
       try {
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await sleep(2000 + Math.random() * 1500);
       } catch(e) {
-        console.log('Retry after timeout...');
+        console.log(`Page ${p + 1} timeout, retrying...`);
         await sleep(3000);
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await sleep(2000);
       }
 
-      // Random delay to simulate human behavior
-      await sleep(1500 + Math.random() * 2000);
-
-      // Wait for ads to load
-      await page.waitForSelector('body', { timeout: 10000 }).catch(() => {});
-
-      // Extract paid ads
       const ads = await page.evaluate(() => {
         const results = [];
 
-        // Google Ads selectors (multiple formats)
-        const adContainers = document.querySelectorAll(
-          '[data-text-ad], .uEierd, .commercial-unit-desktop-top, .commercial-unit-desktop-rhs, [aria-label="Ads"] > div, .pla-unit, #tads .uEierd, #tads [data-text-ad], #bottomads [data-text-ad]'
-        );
+        // Try multiple Google ad selectors
+        const selectors = [
+          '[data-text-ad]',
+          '#tads [data-text-ad]',
+          '#bottomads [data-text-ad]',
+          '.uEierd',
+          '#tads .uEierd',
+        ];
 
-        adContainers.forEach((container, idx) => {
-          // Skip if already processed parent
-          const adLink = container.querySelector('a[href]') || container.closest('a[href]');
-          const url = adLink?.href || '';
-          if (!url || url.startsWith('javascript')) return;
+        const seen = new Set();
+        selectors.forEach(sel => {
+          document.querySelectorAll(sel).forEach(el => {
+            const link = el.querySelector('a[href]');
+            if (!link) return;
+            const url = link.href;
+            if (!url || url.startsWith('javascript') || seen.has(url)) return;
+            seen.add(url);
 
-          // Title
-          const titleEl = container.querySelector('[role="heading"], h3, .CCgQ5, .vvjwJb');
-          const title = titleEl?.textContent?.trim() || '';
-          if (!title) return;
+            const title = el.querySelector('[role="heading"], h3')?.textContent?.trim() || '';
+            if (!title) return;
 
-          // Description
-          const descEl = container.querySelector('.MUxGbd, .yDYNvb, .VwiC3b, .lyLwlc, [data-sncf="1"]');
-          const description = descEl?.textContent?.trim() || '';
+            const desc = el.querySelector('.MUxGbd, .VwiC3b, .yDYNvb, [data-sncf]')?.textContent?.trim() || '';
+            const display = el.querySelector('cite, .qzEoUe, .UdQCqe')?.textContent?.trim() || '';
 
-          // Display URL
-          const displayEl = container.querySelector('.qzEoUe, .UdQCqe, cite, .oBu5B');
-          const displayUrl = displayEl?.textContent?.trim() || '';
+            let domain = '';
+            try { domain = new URL(url).hostname.replace('www.', ''); } catch(e) {}
 
-          // Domain
-          let domain = '';
-          try { domain = new URL(url).hostname.replace('www.', ''); } catch(e) {}
+            const sitelinks = [];
+            el.querySelectorAll('.GzSMEe a, .qPaLIc a').forEach(sl => {
+              if (sl.textContent?.trim()) {
+                sitelinks.push({ title: sl.textContent.trim(), url: sl.href });
+              }
+            });
 
-          // Sitelinks
-          const sitelinks = [];
-          container.querySelectorAll('.GzSMEe a, .qPaLIc a, .fl a').forEach(sl => {
-            const slTitle = sl.textContent?.trim();
-            if (slTitle && slTitle.length > 0) {
-              sitelinks.push({ title: slTitle, url: sl.href });
-            }
-          });
-
-          // Callouts / extensions
-          const callouts = [];
-          container.querySelectorAll('.MUxGbd.wuuuid, .oST1qe').forEach(c => {
-            const text = c.textContent?.trim();
-            if (text) callouts.push(text);
-          });
-
-          results.push({
-            position: idx + 1,
-            title,
-            description,
-            display_url: displayUrl,
-            url,
-            domain,
-            sitelinks,
-            callouts,
-            format: 'search',
+            results.push({ title, description: desc, display_url: display, url, domain, sitelinks, format: 'search' });
           });
         });
 
         return results;
       });
 
-      console.log(`Page ${pageNum + 1}: found ${ads.length} ads`);
-      allAds.push(...ads);
+      console.log(`Page ${p + 1}: ${ads.length} ads found`);
+      allAds.push(...ads.map((ad, i) => ({ ...ad, position: p * 10 + i + 1, page: p + 1, source: 'playwright_brightdata' })));
 
-      if (pageNum < pages - 1) {
-        await sleep(2000 + Math.random() * 3000);
-      }
+      if (p < actualPages - 1) await sleep(2000 + Math.random() * 2000);
     }
 
     await browser.close();
 
-    // Deduplicate by URL
+    // Deduplicate
     const seen = new Set();
     const unique = allAds.filter(ad => {
-      if (seen.has(ad.url)) return false;
+      if (!ad.url || seen.has(ad.url)) return false;
       seen.add(ad.url);
       return true;
     });
@@ -214,15 +166,14 @@ app.post('/api/scrape/google', async (req, res) => {
     console.log(`Total unique ads: ${unique.length}`);
     res.json({ success: true, data: { query, geo: geo.country, ads: unique, total: unique.length } });
 
-  } catch (err) {
-    console.error('Scraper error:', err.message);
+  } catch(err) {
+    console.error('Error:', err.message);
     if (browser) await browser.close().catch(() => {});
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── HEALTH CHECK ──────────────────────────────────────────────────────────────
-app.get('/', (req, res) => res.json({ status: 'ok', service: 'KeySpy Scraper' }));
-app.get('/health', (req, res) => res.json({ status: 'ok', service: 'KeySpy Scraper' }));
+app.get('/', (req, res) => res.json({ status: 'ok', service: 'KeySpy Scraper (Bright Data)' }));
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => console.log(`KeySpy Scraper running on port ${PORT}`));
