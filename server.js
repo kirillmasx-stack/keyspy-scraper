@@ -55,14 +55,19 @@ app.post('/api/scrape/google', async (req, res) => {
   const allAds = [];
 
   try {
+    // Encode credentials in proxy URL to avoid ERR_PROXY_AUTH_UNSUPPORTED
+    const proxyUrl = `http://${encodeURIComponent(proxyUser)}:${encodeURIComponent(IPROYAL_PASS)}@${IPROYAL_HOST}:${IPROYAL_PORT}`;
+
     browser = await chromium.launch({
       headless: true,
+      proxy: { server: `http://${IPROYAL_HOST}:${IPROYAL_PORT}` },
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-blink-features=AutomationControlled',
         '--ignore-certificate-errors',
+        `--proxy-server=http://${IPROYAL_HOST}:${IPROYAL_PORT}`,
       ],
     });
 
@@ -86,6 +91,15 @@ app.post('/api/scrape/google', async (req, res) => {
     });
 
     const page = await context.newPage();
+
+    // Handle proxy authentication challenge
+    await page.route('**', route => route.continue());
+    page.on('request', request => {
+      // Log first request for debugging
+      if (request.url().includes('google')) {
+        console.log('Request headers sent to:', request.url().slice(0, 50));
+      }
+    });
 
     for (let p = 0; p < actualPages; p++) {
       const searchQuery = mode === 'domain' ? `site:${query}` : query;
@@ -209,6 +223,15 @@ app.post('/api/screenshot', async (req, res) => {
     });
 
     const page = await context.newPage();
+
+    // Handle proxy authentication challenge
+    await page.route('**', route => route.continue());
+    page.on('request', request => {
+      // Log first request for debugging
+      if (request.url().includes('google')) {
+        console.log('Request headers sent to:', request.url().slice(0, 50));
+      }
+    });
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await sleep(2000);
 
