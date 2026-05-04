@@ -5,7 +5,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
-const ACTOR_ID = '3Y5oM7ystipacxama';
+const ACTOR_ID = 'apify~google-search-scraper';
 
 const GEO_LOCATIONS = {
   2826: { country: 'gb', location: 'United Kingdom', language: 'en' },
@@ -48,7 +48,8 @@ app.post('/api/scrape/google', async (req, res) => {
         languageCode: geo.language,
         maxPagesPerQuery: actualPages,
         resultsPerPage: 10,
-        includeUnfilteredResults: false,
+        includeUnfilteredResults: true,
+        mobileResults: false,
       },
       { timeout: 130000 }
     );
