@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 8080;
 const IPROYAL_USER = process.env.IPROYAL_USER;
 const IPROYAL_PASS = process.env.IPROYAL_PASS;
 const IPROYAL_HOST = process.env.IPROYAL_HOST || 'geo.iproyal.com';
-const IPROYAL_PORT = parseInt(process.env.IPROYAL_PORT || '12321');
+const IPROYAL_PORT = parseInt(process.env.IPROYAL_PORT || '12323'); // 12323 = HTTPS port
 
 const GEO_MAP = {
   2826: { country: 'gb', domain: 'google.co.uk', hl: 'en', gl: 'gb' },
@@ -60,14 +60,14 @@ app.post('/api/scrape/google', async (req, res) => {
 
     browser = await chromium.launch({
       headless: true,
-      proxy: { server: `http://${IPROYAL_HOST}:${IPROYAL_PORT}` },
+      proxy: { server: `https://${IPROYAL_HOST}:${IPROYAL_PORT}` },
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-blink-features=AutomationControlled',
         '--ignore-certificate-errors',
-        `--proxy-server=http://${IPROYAL_HOST}:${IPROYAL_PORT}`,
+        `--proxy-server=https://${IPROYAL_HOST}:${IPROYAL_PORT}`,
       ],
     });
 
@@ -76,7 +76,7 @@ app.post('/api/scrape/google', async (req, res) => {
       viewport: { width: 1366, height: 768 },
       ignoreHTTPSErrors: true,
       proxy: {
-        server: `http://${IPROYAL_HOST}:${IPROYAL_PORT}`,
+        server: `https://${IPROYAL_HOST}:${IPROYAL_PORT}`,
         username: proxyUser,
         password: IPROYAL_PASS,
       },
@@ -216,7 +216,7 @@ app.post('/api/screenshot', async (req, res) => {
       viewport: { width: 1280, height: 800 },
       ignoreHTTPSErrors: true,
       proxy: {
-        server: `http://${IPROYAL_HOST}:${IPROYAL_PORT}`,
+        server: `https://${IPROYAL_HOST}:${IPROYAL_PORT}`,
         username: proxyUser,
         password: IPROYAL_PASS,
       },
