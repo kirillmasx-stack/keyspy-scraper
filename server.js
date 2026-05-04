@@ -45,7 +45,7 @@ app.post('/api/scrape/google', async (req, res) => {
         queries: searchQuery,
         maxPagesPerQuery: actualPages,
         resultsPerPage: 10,
-        countryCode: geo.country,
+        countryCode: geo.country.toLowerCase(),
         languageCode: geo.language,
         includeUnfilteredResults: false,
         mobileResults: false,
