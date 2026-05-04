@@ -4,30 +4,28 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
-
-// IPRoyal residential proxy
 const IPROYAL_USER = process.env.IPROYAL_USER;
 const IPROYAL_PASS = process.env.IPROYAL_PASS;
 const IPROYAL_HOST = process.env.IPROYAL_HOST || 'geo.iproyal.com';
 const IPROYAL_PORT = parseInt(process.env.IPROYAL_PORT || '12321');
 
 const GEO_MAP = {
-  2826: { country: 'GB', domain: 'google.co.uk', hl: 'en', gl: 'gb' },
-  2840: { country: 'US', domain: 'google.com',    hl: 'en', gl: 'us' },
-  2124: { country: 'CA', domain: 'google.ca',     hl: 'en', gl: 'ca' },
-  2036: { country: 'AU', domain: 'google.com.au', hl: 'en', gl: 'au' },
-  2276: { country: 'DE', domain: 'google.de',     hl: 'de', gl: 'de' },
-  2616: { country: 'PL', domain: 'google.pl',     hl: 'pl', gl: 'pl' },
-  2356: { country: 'IN', domain: 'google.co.in',  hl: 'en', gl: 'in' },
-  2076: { country: 'BR', domain: 'google.com.br', hl: 'pt', gl: 'br' },
-  2484: { country: 'MX', domain: 'google.com.mx', hl: 'es', gl: 'mx' },
-  2784: { country: 'AE', domain: 'google.ae',     hl: 'en', gl: 'ae' },
-  2724: { country: 'ES', domain: 'google.es',     hl: 'es', gl: 'es' },
-  2380: { country: 'IT', domain: 'google.it',     hl: 'it', gl: 'it' },
-  2250: { country: 'FR', domain: 'google.fr',     hl: 'fr', gl: 'fr' },
-  2528: { country: 'NL', domain: 'google.nl',     hl: 'nl', gl: 'nl' },
-  2804: { country: 'UA', domain: 'google.com.ua', hl: 'uk', gl: 'ua' },
-  2566: { country: 'NG', domain: 'google.com.ng', hl: 'en', gl: 'ng' },
+  2826: { country: 'gb', domain: 'google.co.uk', hl: 'en', gl: 'gb' },
+  2840: { country: 'us', domain: 'google.com',    hl: 'en', gl: 'us' },
+  2124: { country: 'ca', domain: 'google.ca',     hl: 'en', gl: 'ca' },
+  2036: { country: 'au', domain: 'google.com.au', hl: 'en', gl: 'au' },
+  2276: { country: 'de', domain: 'google.de',     hl: 'de', gl: 'de' },
+  2616: { country: 'pl', domain: 'google.pl',     hl: 'pl', gl: 'pl' },
+  2356: { country: 'in', domain: 'google.co.in',  hl: 'en', gl: 'in' },
+  2076: { country: 'br', domain: 'google.com.br', hl: 'pt', gl: 'br' },
+  2484: { country: 'mx', domain: 'google.com.mx', hl: 'es', gl: 'mx' },
+  2784: { country: 'ae', domain: 'google.ae',     hl: 'en', gl: 'ae' },
+  2724: { country: 'es', domain: 'google.es',     hl: 'es', gl: 'es' },
+  2380: { country: 'it', domain: 'google.it',     hl: 'it', gl: 'it' },
+  2250: { country: 'fr', domain: 'google.fr',     hl: 'fr', gl: 'fr' },
+  2528: { country: 'nl', domain: 'google.nl',     hl: 'nl', gl: 'nl' },
+  2804: { country: 'ua', domain: 'google.com.ua', hl: 'uk', gl: 'ua' },
+  2566: { country: 'ng', domain: 'google.com.ng', hl: 'en', gl: 'ng' },
 };
 
 const USER_AGENTS = [
@@ -48,10 +46,10 @@ app.post('/api/scrape/google', async (req, res) => {
   const ua = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
   const sessionId = Math.random().toString(36).slice(2, 10);
 
-  // IPRoyal proxy username format: user_country_XX_session_ID
-  const proxyUser = `${IPROYAL_USER}_country_${geo.country}_session_${sessionId}`;
+  // IPRoyal format: user_country_XX_session_ID_streaming_1
+  const proxyUser = `${IPROYAL_USER}_country_${geo.country.toUpperCase()}_session_${sessionId}_streaming_1`;
   console.log(`Scraping: "${query}" geo=${geo.country} pages=${actualPages}`);
-  console.log(`Proxy: ${proxyUser.slice(0, 40)}...`);
+  console.log(`Proxy user: ${proxyUser.slice(0, 50)}...`);
 
   let browser;
   const allAds = [];
@@ -65,7 +63,6 @@ app.post('/api/scrape/google', async (req, res) => {
         '--disable-dev-shm-usage',
         '--disable-blink-features=AutomationControlled',
         '--ignore-certificate-errors',
-        '--ignore-ssl-errors',
       ],
     });
 
@@ -100,88 +97,72 @@ app.post('/api/scrape/google', async (req, res) => {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await sleep(2000 + Math.random() * 1500);
       } catch(e) {
-        console.log(`Page ${p + 1} timeout, retrying...`);
+        console.log(`Retry page ${p + 1}...`);
         await sleep(3000);
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-        await sleep(2000);
+        try {
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+          await sleep(2000);
+        } catch(e2) {
+          console.log(`Page ${p + 1} failed: ${e2.message}`);
+          continue;
+        }
       }
 
-      // Debug: save HTML snippet to check structure
       const pageTitle = await page.title();
-      const pageUrl = await page.url();
-      console.log(`Page ${p + 1} title: ${pageTitle} url: ${pageUrl}`);
-      
-      // Check if Google returned results or blocked
-      const bodyText = await page.evaluate(() => document.body?.innerText?.slice(0, 200));
-      console.log(`Page ${p + 1} body preview: ${bodyText?.replace(/\n/g, ' ')}`);
-
-      // Check what ad-related elements exist
-      const adElements = await page.evaluate(() => {
-        const checks = {
-          'data-text-ad': document.querySelectorAll('[data-text-ad]').length,
-          'uEierd': document.querySelectorAll('.uEierd').length,
-          '#tads': document.querySelectorAll('#tads').length,
-          '#bottomads': document.querySelectorAll('#bottomads').length,
-          'role=heading': document.querySelectorAll('[role="heading"]').length,
-          'aria-label-ad': document.querySelectorAll('[aria-label*="Ad"]').length,
-        };
-        return checks;
-      });
-      console.log(`Page ${p + 1} elements:`, JSON.stringify(adElements));
+      const bodyPreview = await page.evaluate(() => document.body?.innerText?.slice(0, 150)?.replace(/\n/g, ' '));
+      console.log(`Page ${p + 1} title: "${pageTitle}" | body: ${bodyPreview}`);
 
       const ads = await page.evaluate(() => {
         const results = [];
+        const seen = new Set();
 
-        // Try multiple Google ad selectors
-        const selectors = [
-          '[data-text-ad]',
-          '#tads [data-text-ad]',
-          '#bottomads [data-text-ad]',
-          '.uEierd',
-          '#tads .uEierd',
+        const containers = [
+          ...document.querySelectorAll('[data-text-ad]'),
+          ...document.querySelectorAll('#tads .uEierd'),
+          ...document.querySelectorAll('#bottomads .uEierd'),
         ];
 
-        const seen = new Set();
-        selectors.forEach(sel => {
-          document.querySelectorAll(sel).forEach(el => {
-            const link = el.querySelector('a[href]');
-            if (!link) return;
-            const url = link.href;
-            if (!url || url.startsWith('javascript') || seen.has(url)) return;
-            seen.add(url);
+        containers.forEach((el, idx) => {
+          const link = el.querySelector('a[data-rw], a[href]');
+          const url = link?.href || '';
+          if (!url || url.startsWith('javascript') || seen.has(url)) return;
+          seen.add(url);
 
-            const title = el.querySelector('[role="heading"], h3')?.textContent?.trim() || '';
-            if (!title) return;
+          const title = el.querySelector('[role="heading"], h3')?.textContent?.trim() || '';
+          if (!title) return;
 
-            const desc = el.querySelector('.MUxGbd, .VwiC3b, .yDYNvb, [data-sncf]')?.textContent?.trim() || '';
-            const display = el.querySelector('cite, .qzEoUe, .UdQCqe')?.textContent?.trim() || '';
+          const desc = el.querySelector('.MUxGbd, .VwiC3b, .yDYNvb')?.textContent?.trim() || '';
+          const display = el.querySelector('cite, .qzEoUe')?.textContent?.trim() || '';
 
-            let domain = '';
-            try { domain = new URL(url).hostname.replace('www.', ''); } catch(e) {}
+          let domain = '';
+          try { domain = new URL(url).hostname.replace('www.', ''); } catch(e) {}
 
-            const sitelinks = [];
-            el.querySelectorAll('.GzSMEe a, .qPaLIc a').forEach(sl => {
-              if (sl.textContent?.trim()) {
-                sitelinks.push({ title: sl.textContent.trim(), url: sl.href });
-              }
-            });
-
-            results.push({ title, description: desc, display_url: display, url, domain, sitelinks, format: 'search' });
+          const sitelinks = [];
+          el.querySelectorAll('.GzSMEe a, .qPaLIc a').forEach(sl => {
+            const t = sl.textContent?.trim();
+            if (t) sitelinks.push({ title: t, url: sl.href });
           });
+
+          results.push({ title, description: desc, display_url: display, url, domain, sitelinks, callouts: [] });
         });
 
         return results;
       });
 
-      console.log(`Page ${p + 1}: ${ads.length} ads found`);
-      allAds.push(...ads.map((ad, i) => ({ ...ad, position: p * 10 + i + 1, page: p + 1, source: 'playwright_brightdata' })));
+      console.log(`Page ${p + 1}: ${ads.length} ads`);
+      allAds.push(...ads.map((ad, i) => ({
+        ...ad,
+        position: p * 10 + i + 1,
+        page: p + 1,
+        source: 'playwright_iproyal',
+        format: 'search'
+      })));
 
       if (p < actualPages - 1) await sleep(2000 + Math.random() * 2000);
     }
 
     await browser.close();
 
-    // Deduplicate
     const seen = new Set();
     const unique = allAds.filter(ad => {
       if (!ad.url || seen.has(ad.url)) return false;
@@ -194,6 +175,48 @@ app.post('/api/scrape/google', async (req, res) => {
 
   } catch(err) {
     console.error('Error:', err.message);
+    if (browser) await browser.close().catch(() => {});
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Screenshot endpoint
+app.post('/api/screenshot', async (req, res) => {
+  const { url, location_code = 2826 } = req.body;
+  if (!url) return res.status(400).json({ error: 'url is required' });
+  if (!IPROYAL_USER) return res.status(503).json({ error: 'IPROYAL_USER not configured' });
+
+  const geo = GEO_MAP[location_code] || GEO_MAP[2826];
+  const sessionId = Math.random().toString(36).slice(2, 10);
+  const proxyUser = `${IPROYAL_USER}_country_${geo.country.toUpperCase()}_session_${sessionId}_streaming_1`;
+
+  let browser;
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors'],
+    });
+
+    const context = await browser.newContext({
+      userAgent: USER_AGENTS[0],
+      viewport: { width: 1280, height: 800 },
+      ignoreHTTPSErrors: true,
+      proxy: {
+        server: `http://${IPROYAL_HOST}:${IPROYAL_PORT}`,
+        username: proxyUser,
+        password: IPROYAL_PASS,
+      },
+    });
+
+    const page = await context.newPage();
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await sleep(2000);
+
+    const screenshot = await page.screenshot({ type: 'png', fullPage: false, clip: { x: 0, y: 0, width: 1280, height: 800 } });
+    await browser.close();
+
+    res.json({ success: true, screenshot: screenshot.toString('base64'), url });
+  } catch(err) {
     if (browser) await browser.close().catch(() => {});
     res.status(500).json({ error: err.message });
   }
