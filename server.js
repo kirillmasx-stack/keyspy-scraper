@@ -140,11 +140,19 @@ app.post('/api/scrape/google', async (req, res) => {
       const ads = parseGoogleAds(html);
       console.log(`Page ${page + 1}: ${ads.length} ads found`);
 
-      if (ads.length === 0 && page === 0) {
-        // Debug: check if page loaded correctly
-        const hasGoogle = html.includes('google') || html.includes('search');
-        const hasTads = html.includes('tads') || html.includes('data-text-ad');
-        console.log(`Page loaded: ${hasGoogle}, has ad markers: ${hasTads}, html size: ${html.length}`);
+      // Debug first page always
+      if (page === 0) {
+        const hasTads = html.includes('tads');
+        const hasDataTextAd = html.includes('data-text-ad');
+        const hasUEierd = html.includes('uEierd');
+        const hasSponsored = html.includes('Sponsored') || html.includes('sponsored');
+        console.log(`HTML size: ${html.length}, #tads: ${hasTads}, data-text-ad: ${hasDataTextAd}, uEierd: ${hasUEierd}, Sponsored: ${hasSponsored}`);
+        
+        // Save snippet around ad markers for inspection
+        const tadsIdx = html.indexOf('id="tads"');
+        if (tadsIdx > -1) {
+          console.log('tads snippet:', html.slice(tadsIdx, tadsIdx + 500).replace(/\n/g, ' '));
+        }
       }
 
       allAds.push(...ads);
