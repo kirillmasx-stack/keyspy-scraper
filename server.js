@@ -33,72 +33,59 @@ function parseGoogleAds(html) {
   const ads = [];
   const seen = new Set();
 
-  // Process each ad block inside #tads and #bottomads
   $('#tads, #bottomads').find('[data-text-ad], .uEierd').each((idx, el) => {
     const $el = $(el);
 
-    // Find clickable ad URL — prefer data-rw (tracking) or first external href
-    let url = '';
-    $el.find('a').each((i, a) => {
-      const href = $(a).attr('href') || '';
-      if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
-      if (href.includes('google.com/aclk') || href.includes('/aclk?')) {
-        // This is the tracking URL — extract destination from data-adurl or just use it
-        url = href;
-        return false;
-      }
-      if (href.startsWith('http') && !href.includes('google.')) {
-        url = href;
+    // Get final URL from data-pcu (clean destination URL)
+    const mainLink = $el.find('a[data-pcu]').first();
+    const url = mainLink.attr('data-pcu') || mainLink.attr('href') || '';
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+
+    let domain = '';
+    try { domain = new URL(url).hostname.replace('www.', ''); } catch(e) {}
+    if (!domain) return;
+
+    // Title — first heading inside the ad
+    const title = $el.find('[role="heading"]').first().text().trim() ||
+                  $el.find('div[class] span[class]').first().text().trim();
+    if (!title) return;
+
+    // Description — look for longer text blocks
+    let desc = '';
+    $el.find('div, span').each((i, el2) => {
+      const text = $(el2).clone().children().remove().end().text().trim();
+      if (text.length > 40 && text.length < 300 && !text.includes('http') && text !== title) {
+        desc = text;
         return false;
       }
     });
 
-    if (!url) return;
-    if (seen.has(url)) return;
-    seen.add(url);
-
-    // Title — inside heading or h3
-    const title = $el.find('[role="heading"]').first().text().trim() ||
-                  $el.find('h3').first().text().trim();
-    if (!title) return;
-
-    // Description — various Google classes
-    const desc = $el.find('.MUxGbd').not('.qzEoUe').first().text().trim() ||
-                 $el.find('[data-sncf="1"]').first().text().trim() ||
-                 $el.find('.VwiC3b').first().text().trim() ||
-                 $el.find('.yDYNvb').first().text().trim();
-
-    // Display URL (cite or breadcrumb)
+    // Display URL — cite tag or data-dtld
     const display = $el.find('cite').first().text().trim() ||
-                    $el.find('.qzEoUe').first().text().trim() ||
-                    $el.find('.UdQCqe').first().text().trim();
+                    $el.find('[data-dtld]').first().text().trim() ||
+                    domain;
 
-    // Domain from display URL or actual URL
-    let domain = '';
-    const displayClean = display.replace(/\s+/g, '').split('›')[0].split('>')[0].trim();
-    if (displayClean && !displayClean.includes(' ')) {
-      domain = displayClean.replace(/^https?:\/\//, '').replace(/\/.*/, '').replace('www.', '');
-    }
-    if (!domain) {
-      try { domain = new URL(url.startsWith('http') ? url : 'https://' + url).hostname.replace('www.', ''); } catch(e) {}
-    }
-
-    // Sitelinks
+    // Sitelinks — find links with titles inside ad
     const sitelinks = [];
-    $el.find('.GzSMEe a, .qPaLIc a, .OkkX2d a').each((i, sl) => {
-      const t = $(sl).text().trim();
-      const href = $(sl).attr('href') || '';
-      if (t && t.length > 1) sitelinks.push({ title: t, url: href });
+    $el.find('a[href]').each((i, sl) => {
+      const $sl = $(sl);
+      if ($sl.is(mainLink)) return; // skip main link
+      const t = $sl.text().trim();
+      const href = $sl.attr('href') || $sl.attr('data-pcu') || '';
+      if (t && t.length > 2 && t.length < 50 && href && !href.includes('google')) {
+        sitelinks.push({ title: t, url: href });
+      }
     });
 
     ads.push({
       position: ads.length + 1,
       title,
       description: desc,
-      display_url: display || domain,
+      display_url: display,
       url,
       domain,
-      sitelinks,
+      sitelinks: sitelinks.slice(0, 4),
       callouts: [],
       format: 'search',
       source: 'scraperapi',
@@ -154,21 +141,7 @@ app.post('/api/scrape/google', async (req, res) => {
       const ads = parseGoogleAds(html);
       console.log(`Page ${page + 1}: ${ads.length} ads found`);
 
-      // Debug first page
-      if (page === 0) {
-        console.log(`HTML size: ${html.length}`);
-        // Find first data-text-ad block and log it
-        const $ = require('cheerio').load(html);
-        const firstAd = $('#tads [data-text-ad]').first();
-        if (firstAd.length) {
-          console.log('First ad HTML:', firstAd.html()?.slice(0, 800));
-        } else {
-          console.log('No [data-text-ad] in #tads found');
-          // Try uEierd
-          const firstUE = $('#tads .uEierd').first();
-          if (firstUE.length) console.log('First uEierd HTML:', firstUE.html()?.slice(0, 800));
-        }
-      }
+
 
       allAds.push(...ads);
     } catch(err) {
