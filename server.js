@@ -1,6 +1,5 @@
 const express = require('express');
 const axios = require('axios');
-const cheerio = require('cheerio');
 const app = express();
 app.use(express.json());
 
@@ -9,74 +8,110 @@ const SCRAPERAPI_KEY = process.env.SCRAPERAPI_KEY;
 const GOOGLE_COOKIES = process.env.GOOGLE_COOKIES || '';
 
 const GEO_MAP = {
-  2826: { country: 'gb', domain: 'google.co.uk', hl: 'en', gl: 'gb' },
+  2826: { country: 'gb', domain: 'google.co.uk',  hl: 'en', gl: 'gb' },
   2840: { country: 'us', domain: 'google.com',    hl: 'en', gl: 'us' },
   2124: { country: 'ca', domain: 'google.ca',     hl: 'en', gl: 'ca' },
   2036: { country: 'au', domain: 'google.com.au', hl: 'en', gl: 'au' },
   2276: { country: 'de', domain: 'google.de',     hl: 'de', gl: 'de' },
+  2250: { country: 'fr', domain: 'google.fr',     hl: 'fr', gl: 'fr' },
+  2380: { country: 'it', domain: 'google.it',     hl: 'it', gl: 'it' },
+  2724: { country: 'es', domain: 'google.es',     hl: 'es', gl: 'es' },
+  2528: { country: 'nl', domain: 'google.nl',     hl: 'nl', gl: 'nl' },
+  2752: { country: 'se', domain: 'google.se',     hl: 'sv', gl: 'se' },
+  2578: { country: 'no', domain: 'google.no',     hl: 'no', gl: 'no' },
+  2208: { country: 'dk', domain: 'google.dk',     hl: 'da', gl: 'dk' },
+  2246: { country: 'fi', domain: 'google.fi',     hl: 'fi', gl: 'fi' },
   2616: { country: 'pl', domain: 'google.pl',     hl: 'pl', gl: 'pl' },
+  2804: { country: 'ua', domain: 'google.com.ua', hl: 'uk', gl: 'ua' },
+  2203: { country: 'cz', domain: 'google.cz',     hl: 'cs', gl: 'cz' },
+  2348: { country: 'hu', domain: 'google.hu',     hl: 'hu', gl: 'hu' },
+  2642: { country: 'ro', domain: 'google.ro',     hl: 'ro', gl: 'ro' },
+  2100: { country: 'bg', domain: 'google.bg',     hl: 'bg', gl: 'bg' },
+  2300: { country: 'gr', domain: 'google.gr',     hl: 'el', gl: 'gr' },
+  2620: { country: 'pt', domain: 'google.pt',     hl: 'pt', gl: 'pt' },
+  2756: { country: 'ch', domain: 'google.ch',     hl: 'de', gl: 'ch' },
+  2040: { country: 'at', domain: 'google.at',     hl: 'de', gl: 'at' },
+  2056: { country: 'be', domain: 'google.be',     hl: 'fr', gl: 'be' },
   2356: { country: 'in', domain: 'google.co.in',  hl: 'en', gl: 'in' },
   2076: { country: 'br', domain: 'google.com.br', hl: 'pt', gl: 'br' },
   2484: { country: 'mx', domain: 'google.com.mx', hl: 'es', gl: 'mx' },
+  2032: { country: 'ar', domain: 'google.com.ar', hl: 'es', gl: 'ar' },
+  2152: { country: 'cl', domain: 'google.cl',     hl: 'es', gl: 'cl' },
+  2170: { country: 'co', domain: 'google.com.co', hl: 'es', gl: 'co' },
+  2604: { country: 'pe', domain: 'google.com.pe', hl: 'es', gl: 'pe' },
   2784: { country: 'ae', domain: 'google.ae',     hl: 'en', gl: 'ae' },
-  2724: { country: 'es', domain: 'google.es',     hl: 'es', gl: 'es' },
-  2380: { country: 'it', domain: 'google.it',     hl: 'it', gl: 'it' },
-  2250: { country: 'fr', domain: 'google.fr',     hl: 'fr', gl: 'fr' },
-  2528: { country: 'nl', domain: 'google.nl',     hl: 'nl', gl: 'nl' },
-  2804: { country: 'ua', domain: 'google.com.ua', hl: 'uk', gl: 'ua' },
-  2566: { country: 'ng', domain: 'google.com.ng', hl: 'en', gl: 'ng' },
+  2682: { country: 'sa', domain: 'google.com.sa', hl: 'ar', gl: 'sa' },
+  2376: { country: 'il', domain: 'google.co.il',  hl: 'he', gl: 'il' },
+  2792: { country: 'tr', domain: 'google.com.tr', hl: 'tr', gl: 'tr' },
+  2818: { country: 'eg', domain: 'google.com.eg', hl: 'ar', gl: 'eg' },
   2710: { country: 'za', domain: 'google.co.za',  hl: 'en', gl: 'za' },
+  2566: { country: 'ng', domain: 'google.com.ng', hl: 'en', gl: 'ng' },
+  2404: { country: 'ke', domain: 'google.co.ke',  hl: 'en', gl: 'ke' },
+  2392: { country: 'jp', domain: 'google.co.jp',  hl: 'ja', gl: 'jp' },
+  2410: { country: 'kr', domain: 'google.co.kr',  hl: 'ko', gl: 'kr' },
+  2702: { country: 'sg', domain: 'google.com.sg', hl: 'en', gl: 'sg' },
+  2764: { country: 'th', domain: 'google.co.th',  hl: 'th', gl: 'th' },
+  2458: { country: 'my', domain: 'google.com.my', hl: 'en', gl: 'my' },
+  2360: { country: 'id', domain: 'google.co.id',  hl: 'id', gl: 'id' },
+  2608: { country: 'ph', domain: 'google.com.ph', hl: 'en', gl: 'ph' },
+  2554: { country: 'nz', domain: 'google.co.nz',  hl: 'en', gl: 'nz' },
+  2344: { country: 'hk', domain: 'google.com.hk', hl: 'zh', gl: 'hk' },
+  2158: { country: 'tw', domain: 'google.com.tw', hl: 'zh', gl: 'tw' },
+  2704: { country: 'vn', domain: 'google.com.vn', hl: 'vi', gl: 'vn' },
 };
 
 function parseGoogleAds(html) {
-  const $ = cheerio.load(html);
   const ads = [];
   const seen = new Set();
 
-  $('#tads, #bottomads').find('[data-text-ad], .uEierd').each((idx, el) => {
-    const $el = $(el);
-
-    // Get final URL from data-pcu (clean destination URL)
-    const mainLink = $el.find('a[data-pcu]').first();
-    const url = mainLink.attr('data-pcu') || mainLink.attr('href') || '';
-    if (!url || seen.has(url)) return;
+  // Extract ad blocks using data-pcu attribute (final destination URL)
+  const adBlockRegex = /data-pcu="([^"]+)"[^>]*>[\s\S]{0,5000}?(?=data-pcu="|<\/div>\s*<\/div>\s*<\/div>\s*<div class="GUyUUb")/g;
+  
+  // Simpler approach: find all data-pcu URLs and surrounding content
+  const pcuRegex = /data-pcu="(https?:\/\/[^"]+)"/g;
+  let match;
+  
+  while ((match = pcuRegex.exec(html)) !== null) {
+    const url = match[1];
+    if (!url || seen.has(url) || url.includes('google')) continue;
     seen.add(url);
 
     let domain = '';
     try { domain = new URL(url).hostname.replace('www.', ''); } catch(e) {}
-    if (!domain) return;
+    if (!domain) continue;
 
-    // Title — first heading inside the ad
-    const title = $el.find('[role="heading"]').first().text().trim() ||
-                  $el.find('div[class] span[class]').first().text().trim();
-    if (!title) return;
+    // Get surrounding HTML block (2000 chars after this match)
+    const block = html.slice(Math.max(0, match.index - 500), match.index + 2000);
 
-    // Description — look for longer text blocks
+    // Extract title from role="heading"
+    const titleMatch = block.match(/role="heading"[^>]*>([^<]+)</) ||
+                       block.match(/<h3[^>]*>([^<]+)<\/h3>/);
+    const title = titleMatch ? titleMatch[1].replace(/&amp;/g,'&').replace(/&#39;/g,"'").trim() : domain;
+
+    // Extract description — longest text node in block
     let desc = '';
-    $el.find('div, span').each((i, el2) => {
-      const text = $(el2).clone().children().remove().end().text().trim();
-      if (text.length > 40 && text.length < 300 && !text.includes('http') && text !== title) {
+    const textNodes = block.match(/>([^<]{40,200})</g) || [];
+    textNodes.forEach(t => {
+      const text = t.slice(1, -1).trim();
+      if (text.length > desc.length && !text.includes('http') && text !== title && !text.includes('{')) {
         desc = text;
-        return false;
       }
     });
+    desc = desc.replace(/&amp;/g,'&').replace(/&#39;/g,"'").trim();
 
-    // Display URL — cite tag or data-dtld
-    const display = $el.find('cite').first().text().trim() ||
-                    $el.find('[data-dtld]').first().text().trim() ||
-                    domain;
+    // Extract display URL from cite tag
+    const citeMatch = block.match(/<cite[^>]*>([^<]+)<\/cite>/);
+    const display = citeMatch ? citeMatch[1].replace(/<[^>]+>/g,'').trim() : domain;
 
-    // Sitelinks — find links with titles inside ad
+    // Extract sitelinks — other data-pcu in same block with short text
     const sitelinks = [];
-    $el.find('a[href]').each((i, sl) => {
-      const $sl = $(sl);
-      if ($sl.is(mainLink)) return; // skip main link
-      const t = $sl.text().trim();
-      const href = $sl.attr('href') || $sl.attr('data-pcu') || '';
-      if (t && t.length > 2 && t.length < 50 && href && !href.includes('google')) {
-        sitelinks.push({ title: t, url: href });
+    const slRegex = /data-pcu="(https?:\/\/[^"]+)"[^>]*>[\s\S]{0,200}?<span[^>]*>([^<]{3,40})<\/span>/g;
+    let slMatch;
+    while ((slMatch = slRegex.exec(block)) !== null) {
+      if (slMatch[1] !== url && !slMatch[1].includes('google')) {
+        sitelinks.push({ title: slMatch[2].trim(), url: slMatch[1] });
       }
-    });
+    }
 
     ads.push({
       position: ads.length + 1,
@@ -90,7 +125,7 @@ function parseGoogleAds(html) {
       format: 'search',
       source: 'scraperapi',
     });
-  });
+  }
 
   return ads;
 }
